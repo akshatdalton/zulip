@@ -366,6 +366,10 @@ exports.update_messages = function update_messages(events) {
         ) {
             message_edit_history.fetch_and_render_message_history(msg);
         }
+
+        if (topic_edited && Object.prototype.hasOwnProperty.call(event, "muted_topics")) {
+            muting.set_muted_topics(event.muted_topics);
+        }
     }
 
     // If a topic was edited, we re-render the whole view to get any

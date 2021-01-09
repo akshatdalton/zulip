@@ -155,7 +155,12 @@ from zerver.lib.topic import (
     save_message_for_edit_use_case,
     update_messages_for_topic_edit,
 )
-from zerver.lib.topic_mutes import add_topic_mute, get_topic_mutes, remove_topic_mute
+from zerver.lib.topic_mutes import (
+    add_topic_mute,
+    get_topic_mutes,
+    get_users_muted_topic_data,
+    remove_topic_mute,
+)
 from zerver.lib.types import ProfileFieldData
 from zerver.lib.upload import (
     claim_attachment,
@@ -5593,6 +5598,23 @@ def do_update_message(
                 subscriber_ids = [user.user_profile_id for user in subscribers]
 
             users_to_be_notified += list(map(subscriber_info, subscriber_ids))
+
+    if topic_name is not None:
+        users_muted_topic_data = get_users_muted_topic_data(orig_topic_name, stream_id)
+        for user_data in users_muted_topic_data:
+            user_profile = user_data["user_profile"]
+            remove_topic_mute(user_profile, stream_id, orig_topic_name)
+            add_topic_mute(
+                user_profile,
+                stream_id,
+                user_data["recipient_id"],
+                topic_name,
+                user_data["date_muted"],
+            )
+            for user in users_to_be_notified:
+                if user_profile.id == user["id"]:
+                    user["muted_topics"] = get_topic_mutes(user_profile)
+                    break
 
     send_event(user_profile.realm, event, users_to_be_notified)
 

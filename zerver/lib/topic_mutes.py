@@ -134,3 +134,20 @@ def build_topic_mute_checker(user_profile: UserProfile) -> Callable[[int, str], 
         return (recipient_id, topic.lower()) in tups
 
     return is_muted
+
+
+def get_users_muted_topic_data(topic_name: str, stream_id: int) -> List[Dict[str, Any]]:
+    rows = MutedTopic.objects.filter(stream_id=stream_id, topic_name__iexact=topic_name,).values(
+        "user_profile",
+        "recipient_id",
+        "date_muted",
+    )
+
+    return [
+        dict(
+            user_profile=UserProfile.objects.get(id=row["user_profile"]),
+            recipient_id=row["recipient_id"],
+            date_muted=row["date_muted"],
+        )
+        for row in rows
+    ]
