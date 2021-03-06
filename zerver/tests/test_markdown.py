@@ -1370,6 +1370,7 @@ class MarkdownTest(ZulipTestCase):
         assert_conversion("#123@")
         assert_conversion(")#123(", False)
         assert_conversion("##123", False)
+        assert_conversion("\\#123", False)
 
         # test nested realm patterns should avoid double matching
         RealmFilter(
@@ -1526,6 +1527,15 @@ class MarkdownTest(ZulipTestCase):
             "<p>/me writes a second line<br>\nline</p>",
         )
         self.assertTrue(Message.is_status_message(content, rendered_content))
+
+        # This should not update the status when Backslash Escaping is used.
+        content = "\\/me is away"
+        rendered_content = render_markdown(msg, content)
+        self.assertEqual(
+            rendered_content,
+            "<p>/me is away</p>",
+        )
+        self.assertFalse(Message.is_status_message(content, rendered_content))
 
     def test_alert_words(self) -> None:
         user_profile = self.example_user("othello")
@@ -1836,6 +1846,17 @@ class MarkdownTest(ZulipTestCase):
         )
         self.assertTrue(msg.mentions_wildcard)
 
+    def test_backslash_mention_wildcard(self) -> None:
+        user_profile = self.example_user("othello")
+        msg = Message(sender=user_profile, sending_client=get_client("test"))
+
+        content = "\\@**all** test"
+        self.assertEqual(
+            render_markdown(msg, content),
+            "<p>@<strong>all</strong> test</p>",
+        )
+        self.assertFalse(msg.mentions_wildcard)
+
     def test_mention_at_wildcard(self) -> None:
         user_profile = self.example_user("othello")
         msg = Message(sender=user_profile, sending_client=get_client("test"))
@@ -1919,6 +1940,17 @@ class MarkdownTest(ZulipTestCase):
                 f'<p><span class="user-mention silent" data-user-id="*">{wildcard}</span></p>',
             )
             self.assertFalse(msg.mentions_wildcard)
+
+    def test_silent_mention_with_backslash_escape(self) -> None:
+        sender_user_profile = self.example_user("othello")
+        msg = Message(sender=sender_user_profile, sending_client=get_client("test"))
+
+        content = "\\@_**King Hamlet**"
+        self.assertEqual(
+            render_markdown(msg, content),
+            "<p>@_<strong>King Hamlet</strong></p>",
+        )
+        self.assertFalse(msg.mentions_user_ids, set())
 
     def test_mention_invalid_followed_by_valid(self) -> None:
         sender_user_profile = self.example_user("othello")
@@ -2075,6 +2107,72 @@ class MarkdownTest(ZulipTestCase):
             assert_silent_mention(f"```quote\n@**{wildcard}**\n```", wildcard)
             assert_silent_mention(f"```quote\n@_**{wildcard}**\n```", wildcard)
 
+    def test_mention_in_quotes_with_backslash(self) -> None:
+        hamlet = self.example_user("hamlet")
+        msg = Message(sender=hamlet, sending_client=get_client("test"))
+
+        content = r"\```quote" "\n@**King Hamlet**\n" r"\```"
+        self.assertEqual(
+            render_markdown(msg, content),
+            "<p>```quote<br>\n"
+            f'<span class="user-mention" data-user-id="{hamlet.id}">@King Hamlet</span>'
+            "<br>\n```</p>",
+        )
+        self.assertEqual(msg.mentions_user_ids, {hamlet.id})
+
+        content = "\\> @**King Hamlet**"
+        self.assertEqual(
+            render_markdown(msg, content),
+            "<p>&gt; "
+            f'<span class="user-mention" data-user-id="{hamlet.id}">@King Hamlet</span></p>',
+        )
+        self.assertEqual(msg.mentions_user_ids, {hamlet.id})
+
+        content = r"\```quote" "\n@_**King Hamlet**\n" r"\```"
+        self.assertEqual(
+            render_markdown(msg, content),
+            "<p>```quote<br>\n"
+            f'<span class="user-mention silent" data-user-id="{hamlet.id}">King Hamlet</span>'
+            "<br>\n```</p>",
+        )
+        self.assertEqual(msg.mentions_user_ids, set())
+
+        content = "\\> @_**King Hamlet**"
+        self.assertEqual(
+            render_markdown(msg, content),
+            "<p>&gt; "
+            f'<span class="user-mention silent" data-user-id="{hamlet.id}">King Hamlet</span></p>',
+        )
+        self.assertEqual(msg.mentions_user_ids, set())
+
+        content = "```quote\n\\@**King Hamlet**\n```"
+        self.assertEqual(
+            render_markdown(msg, content),
+            "<blockquote>\n<p>@<strong>King Hamlet</strong></p>\n</blockquote>",
+        )
+        self.assertEqual(msg.mentions_user_ids, set())
+
+        content = "> \\@**King Hamlet**"
+        self.assertEqual(
+            render_markdown(msg, content),
+            "<blockquote>\n<p>@<strong>King Hamlet</strong></p>\n</blockquote>",
+        )
+        self.assertEqual(msg.mentions_user_ids, set())
+
+        content = "```quote\n\\@_**King Hamlet**\n```"
+        self.assertEqual(
+            render_markdown(msg, content),
+            "<blockquote>\n<p>@_<strong>King Hamlet</strong></p>\n</blockquote>",
+        )
+        self.assertEqual(msg.mentions_user_ids, set())
+
+        content = "> \\@_**King Hamlet**"
+        self.assertEqual(
+            render_markdown(msg, content),
+            "<blockquote>\n<p>@_<strong>King Hamlet</strong></p>\n</blockquote>",
+        )
+        self.assertEqual(msg.mentions_user_ids, set())
+
     def test_mention_duplicate_full_name(self) -> None:
         realm = get_realm("zulip")
 
@@ -2178,6 +2276,18 @@ class MarkdownTest(ZulipTestCase):
         )
         self.assertEqual(msg.mentions_user_ids, {user_profile.id})
         self.assertEqual(msg.mentions_user_group_ids, {user_group.id})
+
+    def test_backslash_user_group_mention(self) -> None:
+        sender_user_profile = self.example_user("othello")
+        msg = Message(sender=sender_user_profile, sending_client=get_client("test"))
+
+        content = "\\@**King Hamlet** \\@*support*"
+        self.assertEqual(
+            render_markdown(msg, content),
+            "<p>@<strong>King Hamlet</strong> @<em>support</em></p>",
+        )
+        self.assertEqual(msg.mentions_user_ids, set())
+        self.assertEqual(msg.mentions_user_group_ids, set())
 
     def test_invalid_user_group_followed_by_valid_mention_single(self) -> None:
         sender_user_profile = self.example_user("othello")
@@ -2364,6 +2474,15 @@ class MarkdownTest(ZulipTestCase):
             ),
         )
 
+    def test_backslash_stream(self) -> None:
+        sender_user_profile = self.example_user("othello")
+        msg = Message(sender=sender_user_profile, sending_client=get_client("test"))
+        content = "\\#**Denmark**"
+        self.assertEqual(
+            render_markdown(msg, content),
+            "<p>#<strong>Denmark</strong></p>",
+        )
+
     def test_invalid_stream_followed_by_valid_mention(self) -> None:
         denmark = get_stream("Denmark", get_realm("zulip"))
         sender_user_profile = self.example_user("othello")
@@ -2429,6 +2548,15 @@ class MarkdownTest(ZulipTestCase):
             '<p><a class="stream-topic" data-stream-id="{d.id}" href="/#narrow/stream/{d.id}-Denmark/topic/some.20topic">#{d.name} &gt; some topic</a></p>'.format(
                 d=denmark,
             ),
+        )
+
+    def test_backslash_topic(self) -> None:
+        sender_user_profile = self.example_user("othello")
+        msg = Message(sender=sender_user_profile, sending_client=get_client("test"))
+        content = "\\#**Denmark>some topic**"
+        self.assertEqual(
+            render_markdown(msg, content),
+            "<p>#<strong>Denmark&gt;some topic</strong></p>",
         )
 
     def test_topic_atomic_string(self) -> None:
