@@ -20,6 +20,7 @@ to allow you to easily format your messages.
 * [Mention a time](#mention-a-time)
 * [Tables](#tables)
 * [Paragraphs and lines](#paragraphs-and-lines)
+* [Backslash escapes](#backslash-escapes)
 
 ## Emphasis
 
@@ -262,6 +263,13 @@ Under the line
 ```
 
 ![Markdown paragraph](/static/images/help/markdown-paragraph.png)
+
+## Backslash escapes
+
+You can prevent a punctuation character from being interpreted as
+Markdown syntax by escaping it with a backslsah. For example, you can
+surround a phrase with literal asterisks (instead of emphasizing it)
+like this: `\*literal asterisks\*`.
 
 ## In-app help
 

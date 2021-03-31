@@ -84,6 +84,10 @@ const markdown_help_rows = [
         markdown: "Some inline `code`",
     },
     {
+        markdown: "\\*literal asterisks\\*",
+        output_html: "<p>*literal asterisks*</p>",
+    },
+    {
         markdown: `\
 \`\`\`
 def zulip():
