@@ -39,6 +39,19 @@
 
 <div id="markdown-panel">
     <div class="row1">
+        <div>
+            <label>
+                <strong>Markdown Fixtures</strong>
+            </label>
+            <select id="markdown_fixture_names">
+                <option value=""></option>
+                {% for fixture_name in fixture_names %}
+                <option value="{{ fixture_name }}"> {{ fixture_name }} </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="row2">
         <div class="col1">
             <div class="raw_content_title">
                 <span>Raw Conent</span>

@@ -47,6 +47,14 @@ button {
 
 .row1 {
     display: grid;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-left: 2%;
+    margin-right: 2%;
+}
+
+.row2 {
+    display: grid;
     grid-template-columns: 50% 50%;
     margin-left: 2%;
     margin-right: 2%;
