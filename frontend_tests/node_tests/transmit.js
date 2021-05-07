@@ -2,14 +2,15 @@
 
 const {strict: assert} = require("assert");
 
-const {mock_esm, zrequire} = require("../zjsunit/namespace");
+const {mock_cjs, mock_esm, zrequire} = require("../zjsunit/namespace");
 const {run_test} = require("../zjsunit/test");
 const blueslip = require("../zjsunit/zblueslip");
+const $ = require("../zjsunit/zjquery");
 const {page_params} = require("../zjsunit/zpage_params");
 
 const noop = () => {};
 
-const channel = mock_esm("../../static/js/channel");
+mock_cjs("jquery", $);
 const reload = mock_esm("../../static/js/reload");
 const reload_state = mock_esm("../../static/js/reload_state");
 const sent_messages = mock_esm("../../static/js/sent_messages", {
@@ -17,6 +18,11 @@ const sent_messages = mock_esm("../../static/js/sent_messages", {
     report_server_ack: noop,
 });
 
+mock_esm("../../static/js/unsent_messages", {
+    store_unsent_message: noop,
+});
+
+const channel = zrequire("channel");
 const people = zrequire("people");
 const transmit = zrequire("transmit");
 
@@ -46,7 +52,7 @@ run_test("transmit_message_ajax", () => {
     channel.post = (opts) => {
         assert.equal(opts.url, "/json/messages");
         assert.equal(opts.data.foo, "bar");
-        const xhr = "whatever";
+        const xhr = {status: 408};
         opts.error(xhr, "timeout");
     };
 
@@ -96,6 +102,31 @@ run_test("transmit_message_ajax_reload_pending", () => {
     transmit.send_message(request, success, error);
     assert(!error_func_called);
     assert(reload_initiated);
+});
+
+run_test("transmit_message_ajax_server_unreachable", () => {
+    const success = () => {
+        throw new Error("unexpected success");
+    };
+
+    const error = () => {
+        throw new Error("unexpected custom error");
+    };
+    
+    reload.initiate = () => {
+        throw new Error("unexpectedly reload initiated");
+    };
+
+    reload_state.is_pending = () => false;
+
+    const request = {foo: "bar"};
+    channel.post = (opts) => {
+        assert.equal(opts.url, "/json/messages");
+        assert.equal(opts.data.foo, "bar");
+        const xhr = {status: 0};
+        opts.error(xhr, "bad request");
+    };
+    transmit.send_message(request, success, error);
 });
 
 run_test("reply_message_stream", (override) => {

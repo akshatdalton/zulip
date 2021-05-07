@@ -60,7 +60,7 @@ let user_acknowledged_announce;
 let wildcard_mention;
 let uppy;
 
-export let wildcard_mention_large_stream_threshold = 15;
+export let wildcard_mention_large_stream_threshold = 1;
 export const announce_warn_threshold = 60;
 export const uploads_domain = document.location.protocol + "//" + document.location.host;
 export const uploads_path = "/user_uploads";

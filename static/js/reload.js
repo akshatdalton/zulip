@@ -36,21 +36,10 @@ function preserve_state(send_after_reload, save_pointer, save_narrow, save_compo
     saved_data.csrf_token = csrf_token;
 
     if (save_compose) {
-        const msg_type = compose_state.get_message_type();
-        if (msg_type === "stream") {
-            saved_data.msg_type = msg_type;
-            saved_data.stream = compose_state.stream_name();
-            saved_data.topic = compose_state.topic();
-        } else if (msg_type === "private") {
-            saved_data.msg_type = msg_type;
-            saved_data.recipient = compose_state.private_message_recipient();
-        }
-
-        if (msg_type) {
-            saved_data.msg = compose_state.message_content();
-        }
+        saved_data.message = compose_state.construct_message_data();
     }
-
+    console.log("saved_data => ", saved_data);
+    window.alert(1);
     if (save_pointer) {
         const pointer = message_lists.home.selected_id();
         if (pointer !== -1) {
@@ -104,6 +93,11 @@ export function initialize() {
     const location = window.location.toString();
     const hash_fragment = location.slice(location.indexOf("#") + 1);
 
+    // We first send if there is any unsent messages, because
+    // the message in `saved_data` is newer than the unsent_messages.
+    // Therefore, we send these messages in the order they are created.
+    // unsent_messages.send_unsent_messages();
+
     // hash_fragment should be e.g. `reload:12345123412312`
     if (hash_fragment.search("reload:") !== 0) {
         return;
@@ -125,16 +119,17 @@ export function initialize() {
     }
     ls.remove(hash_fragment);
 
-    if (saved_data.msg !== undefined) {
+    const message = saved_data.message;
+    if (message.content !== undefined) {
         try {
             // TODO: preserve focus
-            const topic = util.get_reload_topic(saved_data);
+            const topic = util.get_reload_topic(message);
 
-            compose_actions.start(saved_data.msg_type, {
-                stream: saved_data.stream || "",
+            compose_actions.start(message.type, {
+                stream: message.stream || "",
                 topic: topic || "",
-                private_message_recipient: saved_data.recipient || "",
-                content: saved_data.msg || "",
+                private_message_recipient: message.private_message_recipient || "",
+                content: message.content || "",
             });
             if (saved_data.send_after_reload) {
                 compose.finish();
