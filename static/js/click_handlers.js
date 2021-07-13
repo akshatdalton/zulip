@@ -335,14 +335,6 @@ export function initialize() {
         message_edit.toggle_resolve_topic(message_id, topic_name);
     });
 
-    $("body").on("click", ".message_header .on_hover_topic_unresolve", (e) => {
-        e.stopPropagation();
-        const recipient_row = $(e.target).closest(".recipient_row");
-        const message_id = rows.id_for_recipient_row(recipient_row);
-        const topic_name = $(e.target).attr("data-topic-name");
-        message_edit.toggle_resolve_topic(message_id, topic_name);
-    });
-
     // TOPIC MUTING
     function mute_or_unmute_topic($elt, mute_topic) {
         const stream_id = Number.parseInt($elt.attr("data-stream-id"), 10);
